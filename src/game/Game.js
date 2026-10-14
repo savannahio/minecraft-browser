@@ -55,20 +55,34 @@ on(window, 'mousemove', e => {
 on(window, 'wheel', e => { if (!locked()) return; sel = (sel + (e.deltaY > 0 ? 1 : -1) + 9) % 9; updateHotbar(); }, { passive: true });
 on(window, 'contextmenu', e => e.preventDefault());
 let target = null;
+const breakBlock = () => {
+  if (!target) return;
+  const [x, y, z] = target.pos;
+  if (world.get(x, y, z) !== BEDROCK) world.set(x, y, z, AIR);
+};
+const placeBlock = () => {
+  if (!target) return;
+  const x = target.pos[0] + target.normal[0], y = target.pos[1] + target.normal[1], z = target.pos[2] + target.normal[2];
+  const cur = world.get(x, y, z);
+  if (cur !== AIR && cur !== WATER) return;
+  const id = HOTBAR[sel];
+  if (isSolid(id) && x + 1 > P.pos.x - W && x < P.pos.x + W && z + 1 > P.pos.z - W && z < P.pos.z + W && y + 1 > P.pos.y && y < P.pos.y + H) return;
+  world.set(x, y, z, id);
+};
 on(window, 'mousedown', e => {
   if (!locked() || !target) return;
-  if (e.button === 0) {
-    const [x, y, z] = target.pos;
-    if (world.get(x, y, z) !== BEDROCK) world.set(x, y, z, AIR);
-  } else if (e.button === 2) {
-    const x = target.pos[0] + target.normal[0], y = target.pos[1] + target.normal[1], z = target.pos[2] + target.normal[2];
-    const cur = world.get(x, y, z);
-    if (cur !== AIR && cur !== WATER) return;
-    const id = HOTBAR[sel];
-    if (isSolid(id) && x + 1 > P.pos.x - W && x < P.pos.x + W && z + 1 > P.pos.z - W && z < P.pos.z + W && y + 1 > P.pos.y && y < P.pos.y + H) return;
-    world.set(x, y, z, id);
-  }
+  if (e.button === 0) breakBlock();
+  else if (e.button === 2) placeBlock();
 });
+// touch input (driven by React touch controls)
+const touch = { mx: 0, my: 0, jump: false };
+this.touch = touch;
+this.breakBlock = breakBlock; this.placeBlock = placeBlock;
+this.select = i => { sel = i; updateHotbar(); };
+this.look = (dx, dy) => {
+  P.yaw -= dx * 0.005; P.pitch -= dy * 0.005;
+  P.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, P.pitch));
+};
 on(window, 'resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
 // physics
@@ -103,17 +117,17 @@ function tick(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   const inWater = world.get(Math.floor(P.pos.x), Math.floor(P.pos.y + 0.5), Math.floor(P.pos.z)) === WATER;
   const speed = (keys.ShiftLeft || keys.ShiftRight ? 7 : 4.3) * (inWater ? 0.55 : 1);
-  const f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0), s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+  const f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0) - touch.my, s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + touch.mx;
   const sin = Math.sin(P.yaw), cos = Math.cos(P.yaw);
   let mx = -sin * f + cos * s, mz = -cos * f - sin * s;
-  const len = Math.hypot(mx, mz) || 1;
+  const len = Math.max(1, Math.hypot(mx, mz));
   P.vel.x = mx / len * speed; P.vel.z = mz / len * speed;
   if (inWater) {
     P.vel.y = Math.max(P.vel.y - 10 * dt, -3);
-    if (keys.Space) P.vel.y = 3.5;
+    if (keys.Space || touch.jump) P.vel.y = 3.5;
   } else {
     P.vel.y -= 28 * dt;
-    if (keys.Space && P.onGround) P.vel.y = 8.6;
+    if ((keys.Space || touch.jump) && P.onGround) P.vel.y = 8.6;
   }
   P.vel.y = Math.max(P.vel.y, -40);
   moveAxis('x', P.vel.x * dt); moveAxis('z', P.vel.z * dt);

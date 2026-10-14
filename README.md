@@ -25,6 +25,16 @@ A Minecraft-like voxel sandbox that runs entirely in the browser. It's built wit
 | 1–9 / scroll wheel | Select block |
 | Esc | Release mouse |
 
+## Mobile / touch controls
+Phones and tablets are detected automatically (coarse pointer or touch support, with a user-agent or small-screen fallback). On those devices you tap to start; pointer lock isn't used.
+| Control | Action |
+|---|---|
+| Joystick (bottom-left) | Move |
+| Drag on right half | Look |
+| Jump button | Jump / swim up |
+| Break / Place buttons | Act on the block under the crosshair |
+| Tap a hotbar slot | Select block |
+
 ## Local development
 ```
 npm install
@@ -35,5 +45,5 @@ npm run preview    # serve the build
 
 ## Structure
 - `src/game/`: the engine (`Game.js`, `world.js`, `blocks.js`, `noise.js`)
-- `src/components/`: `Hud`, `Hotbar` and `Overlay` (React + Tailwind)
+- `src/components/`: `Hud`, `Hotbar`, `Overlay` and `TouchControls` (React + Tailwind)
 - `.github/workflows/deploy.yml`: a GitHub Actions workflow that builds the app and deploys `dist/` to GitHub Pages on every push to `main`
