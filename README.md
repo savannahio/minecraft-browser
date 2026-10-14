@@ -36,4 +36,4 @@ npm run preview    # serve the build
 ## Structure
 - `src/game/`: the engine (`Game.js`, `world.js`, `blocks.js`, `noise.js`)
 - `src/components/`: `Hud`, `Hotbar` and `Overlay` (React + Tailwind)
-- Deployment: `npm run build`, then the contents of `dist/` are pushed to the `gh-pages` branch, which GitHub Pages serves
+- `.github/workflows/deploy.yml`: a GitHub Actions workflow that builds the app and deploys `dist/` to GitHub Pages on every push to `main`
