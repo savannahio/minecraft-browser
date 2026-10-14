@@ -1,11 +1,15 @@
-import * as THREE from './three.module.js';
+import * as THREE from 'three';
 import { World, SIZE, HEIGHT } from './world.js';
 import { makeAtlas, HOTBAR, BLOCKS, TILE, isSolid, WATER, BEDROCK, AIR } from './blocks.js';
 
+export class Game {
+  constructor(container, cb = {}) {
+const listeners = []; let raf = 0;
+const on = (t, ev, fn, opt) => { t.addEventListener(ev, fn, opt); listeners.push([t, ev, fn, opt]); };
 const renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
-document.body.prepend(renderer.domElement);
+container.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 const sky = new THREE.Color(0x87ceeb);
 scene.background = sky; scene.fog = new THREE.Fog(sky, 40, 110);
@@ -18,7 +22,7 @@ atlas.magFilter = THREE.NearestFilter; atlas.minFilter = THREE.NearestFilter; at
 
 const world = new World(scene, atlas);
 world.buildAll();
-document.getElementById('status').textContent = 'World ready.';
+
 
 // highlight box
 const hl = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.002, 1.002, 1.002)), new THREE.LineBasicMaterial({ color: 0x000000 }));
@@ -29,42 +33,29 @@ const P = { pos: new THREE.Vector3(SIZE / 2 + 0.5, 0, SIZE / 2 + 0.5), vel: new 
 P.pos.y = world.heightAt(SIZE / 2, SIZE / 2) + 1.01;
 const W = 0.3, H = 1.8, EYE = 1.62;
 
-// HUD
-const hotbarEl = document.getElementById('hotbar');
 let sel = 0;
-HOTBAR.forEach((id, i) => {
-  const c = document.createElement('canvas'); c.width = c.height = TILE;
-  c.getContext('2d').drawImage(atlasCanvas, BLOCKS[id].tiles[1] * TILE, 0, TILE, TILE, 0, 0, TILE, TILE);
-  const d = document.createElement('div'); d.className = 'slot'; d.title = BLOCKS[id].name;
-  d.style.backgroundImage = `url(${c.toDataURL()})`; d.innerHTML = `<span>${i + 1}</span>`;
-  hotbarEl.appendChild(d);
-});
-const updateHotbar = () => [...hotbarEl.children].forEach((e, i) => e.classList.toggle('sel', i === sel));
-updateHotbar();
-
+const updateHotbar = () => cb.onSelect?.(sel);
 // input
 const keys = {};
-const overlay = document.getElementById('overlay');
 const canvas = renderer.domElement;
 const locked = () => document.pointerLockElement === canvas;
-overlay.addEventListener('click', () => canvas.requestPointerLock());
-document.addEventListener('pointerlockchange', () => overlay.classList.toggle('hidden', locked()));
-addEventListener('keydown', e => {
+on(document, 'pointerlockchange', () => cb.onLock?.(locked()));
+on(window, 'keydown', e => {
   keys[e.code] = true;
   if (e.code >= 'Digit1' && e.code <= 'Digit9') { sel = +e.code.slice(5) - 1; updateHotbar(); }
   if (e.code === 'Space') e.preventDefault();
 });
-addEventListener('keyup', e => { keys[e.code] = false; });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
-addEventListener('mousemove', e => {
+on(window, 'keyup', e => { keys[e.code] = false; });
+on(window, 'blur', () => { for (const k in keys) keys[k] = false; });
+on(window, 'mousemove', e => {
   if (!locked()) return;
   P.yaw -= e.movementX * 0.0022; P.pitch -= e.movementY * 0.0022;
   P.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, P.pitch));
 });
-addEventListener('wheel', e => { if (!locked()) return; sel = (sel + (e.deltaY > 0 ? 1 : -1) + 9) % 9; updateHotbar(); }, { passive: true });
-addEventListener('contextmenu', e => e.preventDefault());
+on(window, 'wheel', e => { if (!locked()) return; sel = (sel + (e.deltaY > 0 ? 1 : -1) + 9) % 9; updateHotbar(); }, { passive: true });
+on(window, 'contextmenu', e => e.preventDefault());
 let target = null;
-addEventListener('mousedown', e => {
+on(window, 'mousedown', e => {
   if (!locked() || !target) return;
   if (e.button === 0) {
     const [x, y, z] = target.pos;
@@ -78,7 +69,7 @@ addEventListener('mousedown', e => {
     world.set(x, y, z, id);
   }
 });
-addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+on(window, 'resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
 // physics
 function solidAt(x, y, z) {
@@ -108,7 +99,6 @@ function moveAxis(axis, amt) {
 }
 
 let last = performance.now(), fpsT = 0, frames = 0, fps = 0;
-const infoEl = document.getElementById('info');
 function tick(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   const inWater = world.get(Math.floor(P.pos.x), Math.floor(P.pos.y + 0.5), Math.floor(P.pos.z)) === WATER;
@@ -145,8 +135,22 @@ function tick(now) {
   renderer.render(scene, camera);
   frames++; fpsT += dt;
   if (fpsT >= 0.5) { fps = Math.round(frames / fpsT); frames = 0; fpsT = 0; }
-  infoEl.textContent = `FPS ${fps}\nXYZ ${P.pos.x.toFixed(1)} ${P.pos.y.toFixed(1)} ${P.pos.z.toFixed(1)}\nBlock: ${BLOCKS[HOTBAR[sel]].name}`;
-  requestAnimationFrame(tick);
+  cb.onInfo?.(`FPS ${fps}\nXYZ ${P.pos.x.toFixed(1)} ${P.pos.y.toFixed(1)} ${P.pos.z.toFixed(1)}\nBlock: ${BLOCKS[HOTBAR[sel]].name}`);
+  raf = requestAnimationFrame(tick);
 }
-requestAnimationFrame(tick);
-window.__game = { world, P };
+raf = requestAnimationFrame(tick);
+
+this.world = world; this.P = P;
+this.lock = () => canvas.requestPointerLock();
+this.hotbarIcons = () => HOTBAR.map(id => {
+  const c = document.createElement('canvas'); c.width = c.height = TILE;
+  c.getContext('2d').drawImage(atlasCanvas, BLOCKS[id].tiles[1] * TILE, 0, TILE, TILE, 0, 0, TILE, TILE);
+  return { name: BLOCKS[id].name, url: c.toDataURL() };
+});
+this.dispose = () => {
+  cancelAnimationFrame(raf);
+  for (const [t, ev, fn, opt] of listeners) t.removeEventListener(ev, fn, opt);
+  renderer.dispose(); canvas.remove();
+};
+  }
+}

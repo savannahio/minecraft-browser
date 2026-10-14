@@ -1,6 +1,6 @@
 # Minecraft Browser
 
-A Minecraft-like voxel sandbox that runs entirely in the browser. Built with [Three.js](https://threejs.org/) (r160, vendored in `js/three.module.js`). It has no backend and no build step.
+A Minecraft-like voxel sandbox that runs entirely in the browser. It's built with **React**, **Tailwind CSS**, **Three.js** and **Vite**, and needs no backend.
 
 **Play live:** https://savannahio.github.io/minecraft-browser/
 
@@ -11,7 +11,7 @@ A Minecraft-like voxel sandbox that runs entirely in the browser. Built with [Th
 - Textures are drawn on a canvas in code, so there are no external assets.
 - First-person controls with pointer lock, gravity, jumping, swimming, and AABB collision.
 - Voxel raycasting with a highlight on the targeted block, plus block breaking and placing.
-- A hotbar HUD and a crosshair.
+- The HUD, hotbar and click-to-play overlay are React components styled with Tailwind.
 
 ## Controls
 | Input | Action |
@@ -25,9 +25,15 @@ A Minecraft-like voxel sandbox that runs entirely in the browser. Built with [Th
 | 1–9 / scroll wheel | Select block |
 | Esc | Release mouse |
 
-## Run locally
-ES modules need a web server, so `file://` won't work:
+## Local development
 ```
-python3 -m http.server 8000
+npm install
+npm run dev        # http://localhost:5173/minecraft-browser/
+npm run build      # production build into dist/
+npm run preview    # serve the build
 ```
-Then open http://localhost:8000.
+
+## Structure
+- `src/game/`: the engine (`Game.js`, `world.js`, `blocks.js`, `noise.js`)
+- `src/components/`: `Hud`, `Hotbar` and `Overlay` (React + Tailwind)
+- Deployment: `npm run build`, then the contents of `dist/` are pushed to the `gh-pages` branch, which GitHub Pages serves

@@ -1,4 +1,4 @@
-import * as THREE from './three.module.js';
+import * as THREE from 'three';
 import { createNoise } from './noise.js';
 import { AIR, GRASS, DIRT, STONE, LOG, LEAVES, SAND, WATER, BEDROCK, BLOCKS, NUM_TILES, isOpaque } from './blocks.js';
 
